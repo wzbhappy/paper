@@ -1,0 +1,17 @@
+# 后端镜像只需要 backend/ 目录，排除其余内容以减小体积
+frontend/
+.git/
+.github/
+docs/
+**/node_modules/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/dist/
+**/.venv/
+**/venv/
+*.db
+.env
+.env.*
+data/
+backend/data/

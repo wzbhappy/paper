@@ -6,6 +6,16 @@
 
 设计文档见 [DESIGN.md](./DESIGN.md)。
 
+## 部署
+
+本机开发用 `docker compose up` 即可（见下文「快速开始」）。
+
+生产部署采用混合架构：前端上 **Cloudflare Pages**，后端上 **Fly.io**，
+数据服务用 Neon Postgres / Neo4j Aura / Qdrant Cloud 的免费层。
+完整步骤见 [DEPLOY.md](./DEPLOY.md)。
+
+后端 API 无鉴权，生产部署前务必阅读 DEPLOY.md 与 README 末尾的安全提醒。
+
 ## 技术决策
 
 - 单用户部署（暂不多租户）

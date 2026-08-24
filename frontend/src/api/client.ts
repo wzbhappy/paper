@@ -1,6 +1,12 @@
-/** 后端 API 客户端。Vite 代理 /api 到后端，无需配置 base URL。 */
-
-const BASE = '/api/v1'
+/**
+ * 后端 API 客户端。
+ * - 本地开发：Vite 代理 /api 到后端，BASE 默认为相对路径 /api/v1。
+ * - 生产部署（前后端不同源）：构建时用 VITE_API_BASE 注入后端绝对地址，
+ *   如 https://paper-assistant.fly.dev/api/v1。
+ */
+const BASE = (
+  (import.meta.env.VITE_API_BASE as string | undefined) || '/api/v1'
+).replace(/\/+$/, '')
 
 export interface Project {
   id: string

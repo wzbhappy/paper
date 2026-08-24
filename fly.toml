@@ -1,0 +1,43 @@
+# Fly.io 后端部署配置
+# 文档：https://fly.io/docs/flytoml/
+# 使用前：先 `fly launch`（或 `fly apps create`）创建应用，
+# 再 `fly volumes create paper_data --region hkg` 创建持久卷，
+# 最后 `fly deploy`。详见 DEPLOY.md。
+
+app = "paper-assistant"
+primary_region = "hkg"
+
+[build]
+  # 使用项目根目录的 Dockerfile（生产镜像，不含 --reload）
+  dockerfile = "Dockerfile"
+
+[env]
+  STORAGE_DIR = "/data/papers"
+  PYTHONUNBUFFERED = "1"
+
+# 数据库等机密通过 `fly secrets set` 注入，不要写进此文件：
+#   fly secrets set DATABASE_URL=... NEO4J_URL=... NEO4J_PASSWORD=...
+#   fly secrets set QDRANT_URL=... CORS_ORIGINS=...
+#   fly secrets set DEEPSEEK_API_KEY=... (或 OPENAI_API_KEY=...)
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  # 空闲自动停机省钱；收到请求自动唤醒（冷启动约 1-3 秒）
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+# PDF 文件持久化存储。先创建卷：
+#   fly volumes create paper_data --region hkg
+[[mounts]]
+  source = "paper_data"
+  destination = "/data"
+
+# 健康检查：部署时若 /health 不通会自动回滚
+[[http_service.checks]]
+  interval = "10s"
+  timeout = "3s"
+  grace_period = "30s"
+  method = "get"
+  path = "/health"
