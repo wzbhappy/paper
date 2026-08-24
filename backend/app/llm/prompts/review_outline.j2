@@ -1,0 +1,32 @@
+你是一名资深学者，正在为文献综述规划章节结构。
+
+## 任务
+
+下面给出若干组文献（每组由引用关系聚类得到）。为每一组起一个准确的学术小节标题。
+
+## 要求
+
+- 严格按给定 JSON 结构输出，不要输出任何解释文字或代码围栏。
+- 标题用{{ language }}，学术化、具体，能概括该组文献的共同主题。
+- 标题不要带编号（系统会自动编号），不要用「第一组」这类无信息表述。
+- `order` 表示该小节在综述中的建议顺序（1 开始）：基础/早期工作在前，新兴/细分方向在后。
+- 组的数量与输入一致，每组必须有对应输出。
+
+## JSON 结构
+
+{
+  "sections": [
+    {"cluster_id": 0, "title": "小节标题", "order": 1}
+  ]
+}
+
+## 文献分组
+
+{% for cluster in clusters %}
+### 组 {{ cluster.id }}（{{ cluster.papers | length }} 篇）
+
+{% for paper in cluster.papers %}
+- {{ paper.title | default('无标题', true) }}{% if paper.year %}（{{ paper.year }}）{% endif %}{% if paper.one_line %}：{{ paper.one_line }}{% endif %}
+
+{% endfor %}
+{% endfor %}
