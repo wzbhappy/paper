@@ -122,6 +122,67 @@ export interface GraphStats {
   error: string | null
 }
 
+export interface OutlineTemplate {
+  key: string
+  name: string
+  description: string
+}
+
+export interface OutlineSection {
+  id: string
+  project_id: string
+  parent_id: string | null
+  title: string
+  path: string
+  type: string
+  level: number
+  order: number
+  key_points: string[]
+  est_words: number
+  hint: string | null
+  template: string | null
+  word_count: number
+  has_content: boolean
+}
+
+export interface ManuscriptSection {
+  id: string
+  outline_section_id: string
+  title: string
+  path: string
+  level: number
+  content: string
+  word_count: number
+  status: string
+  ai_generated: boolean
+  source_paper_ids: string[]
+}
+
+export type WriteActionName =
+  | 'draft'
+  | 'expand'
+  | 'rewrite'
+  | 'polish'
+  | 'academic'
+  | 'translate'
+  | 'dedup'
+
+export interface WriteActionResult {
+  content: string
+  action: string
+  paper_ids: string[]
+  invalid_citations: number[]
+  applied: boolean
+}
+
+export interface QualityReport {
+  issues: { section: string; kind: string; detail: string }[]
+  word_count: number
+  section_count: number
+  reference_count: number
+  ai_generated_sections: number
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -226,6 +287,68 @@ export const api = {
     request<Review>(`/projects/${projectId}/review/${reviewId}`, json('PUT', { markdown })),
 
   graphStats: (projectId: string) => request<GraphStats>(`/projects/${projectId}/graph/stats`),
+
+  outlineTemplates: (projectId: string) =>
+    request<OutlineTemplate[]>(`/projects/${projectId}/outline/templates`),
+
+  listOutline: (projectId: string) =>
+    request<OutlineSection[]>(`/projects/${projectId}/outline`),
+
+  generateOutline: (projectId: string, body: { template?: string; replace?: boolean }) =>
+    request<OutlineSection[]>(`/projects/${projectId}/outline/generate`, json('POST', body)),
+
+  addOutlineSection: (
+    projectId: string,
+    body: { title: string; parent_id?: string | null; key_points?: string[] },
+  ) => request<OutlineSection>(`/projects/${projectId}/outline`, json('POST', body)),
+
+  updateOutlineSection: (
+    projectId: string,
+    sectionId: string,
+    patch: { title?: string; key_points?: string[]; est_words?: number },
+  ) =>
+    request<OutlineSection>(
+      `/projects/${projectId}/outline/${sectionId}`,
+      json('PATCH', patch),
+    ),
+
+  deleteOutlineSection: (projectId: string, sectionId: string) =>
+    request<void>(`/projects/${projectId}/outline/${sectionId}`, { method: 'DELETE' }),
+
+  listManuscript: (projectId: string) =>
+    request<ManuscriptSection[]>(`/projects/${projectId}/manuscript`),
+
+  saveManuscriptSection: (
+    projectId: string,
+    sectionId: string,
+    body: { content: string; status?: string },
+  ) =>
+    request<ManuscriptSection>(
+      `/projects/${projectId}/manuscript/${sectionId}`,
+      json('PUT', body),
+    ),
+
+  aiWrite: (
+    projectId: string,
+    sectionId: string,
+    body: {
+      action: WriteActionName
+      selection?: string
+      target_words?: number
+      language?: string
+      apply?: boolean
+    },
+  ) =>
+    request<WriteActionResult>(
+      `/projects/${projectId}/manuscript/${sectionId}/ai`,
+      json('POST', body),
+    ),
+
+  qualityCheck: (projectId: string) =>
+    request<QualityReport>(`/projects/${projectId}/manuscript/quality`),
+
+  exportUrl: (projectId: string, format: string, disclosure = true) =>
+    `${BASE}/projects/${projectId}/manuscript/export?format=${format}&disclosure=${disclosure}`,
 }
 
 /** 轮询任务直到完成或失败。 */

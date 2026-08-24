@@ -49,6 +49,9 @@ class Project(Base):
     reviews: Mapped[list["ReviewDraft"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
+    outline_sections: Mapped[list["OutlineSection"]] = relationship(
+        back_populates="project", cascade="all, delete-orphan"
+    )
 
 
 class Paper(Base):
@@ -169,3 +172,72 @@ class ReviewDraft(Base):
     )
 
     project: Mapped["Project"] = relationship(back_populates="reviews")
+
+
+class OutlineSection(Base):
+    """大纲章节。用 parent_id 表达层级，path 冗余存储便于查询与展示。"""
+
+    __tablename__ = "outline_sections"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE")
+    )
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("outline_sections.id", ondelete="CASCADE")
+    )
+    title: Mapped[str] = mapped_column(Text)
+    path: Mapped[str] = mapped_column(Text)
+    type: Mapped[str] = mapped_column(String(16), default="section")
+    level: Mapped[int] = mapped_column(default=1)
+    order: Mapped[int] = mapped_column(default=0)
+    key_points: Mapped[list | None] = mapped_column(JsonType)
+    est_words: Mapped[int] = mapped_column(default=400)
+    hint: Mapped[str | None] = mapped_column(Text)
+    template: Mapped[str | None] = mapped_column(String(32))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    project: Mapped["Project"] = relationship(back_populates="outline_sections")
+    children: Mapped[list["OutlineSection"]] = relationship(
+        back_populates="parent", cascade="all, delete-orphan"
+    )
+    parent: Mapped["OutlineSection | None"] = relationship(
+        back_populates="children", remote_side="OutlineSection.id"
+    )
+    manuscript: Mapped["ManuscriptSection | None"] = relationship(
+        back_populates="outline_section", cascade="all, delete-orphan", uselist=False
+    )
+
+
+class ManuscriptSection(Base):
+    """正文草稿，与大纲章节一对一绑定。"""
+
+    __tablename__ = "manuscript_sections"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE")
+    )
+    outline_section_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("outline_sections.id", ondelete="CASCADE"), unique=True
+    )
+    content: Mapped[str] = mapped_column(Text, default="")
+    """Markdown 正文。"""
+    word_count: Mapped[int] = mapped_column(default=0)
+    status: Mapped[str] = mapped_column(String(16), default="draft")
+    ai_generated: Mapped[bool] = mapped_column(default=False)
+    """是否由 AI 生成初稿，用于导出时的 AI 使用声明。"""
+    source_paper_ids: Mapped[list | None] = mapped_column(JsonType)
+    """生成时引用的文献，供溯源。"""
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    outline_section: Mapped["OutlineSection"] = relationship(
+        back_populates="manuscript"
+    )

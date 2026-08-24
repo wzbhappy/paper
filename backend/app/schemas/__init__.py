@@ -204,3 +204,108 @@ class GraphStatsOut(BaseModel):
     most_cited: list[dict[str, Any]] = Field(default_factory=list)
     available: bool = True
     error: str | None = None
+
+
+# ---------- Outline ----------
+class TemplateOut(BaseModel):
+    key: str
+    name: str
+    description: str
+
+
+class OutlineGenerateRequest(BaseModel):
+    template: str | None = None
+    replace: bool = True
+    """True 时清空已有大纲（会一并删除已写正文）。"""
+
+
+class OutlineSectionOut(BaseModel):
+    id: UUID
+    project_id: UUID
+    parent_id: UUID | None = None
+    title: str
+    path: str
+    type: str
+    level: int
+    order: int
+    key_points: list[str] = Field(default_factory=list)
+    est_words: int = 400
+    hint: str | None = None
+    template: str | None = None
+    word_count: int = 0
+    """对应正文字数，便于前端显示进度。"""
+    has_content: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OutlineSectionCreate(BaseModel):
+    title: str
+    parent_id: UUID | None = None
+    type: str = "section"
+    key_points: list[str] = Field(default_factory=list)
+    est_words: int = Field(default=400, ge=0, le=100000)
+
+
+class OutlineSectionUpdate(BaseModel):
+    title: str | None = None
+    key_points: list[str] | None = None
+    est_words: int | None = Field(default=None, ge=0, le=100000)
+    order: int | None = None
+
+
+# ---------- Manuscript ----------
+class ManuscriptSectionOut(BaseModel):
+    id: UUID
+    outline_section_id: UUID
+    title: str = ""
+    path: str = ""
+    level: int = 1
+    content: str = ""
+    word_count: int = 0
+    status: str = "draft"
+    ai_generated: bool = False
+    source_paper_ids: list[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ManuscriptSectionSave(BaseModel):
+    content: str
+    status: str | None = Field(default=None, pattern="^(draft|revising|done)$")
+
+
+class WriteActionRequest(BaseModel):
+    action: str = Field(
+        pattern="^(draft|expand|rewrite|polish|academic|translate|dedup)$"
+    )
+    selection: str | None = None
+    target_words: int = Field(default=400, ge=50, le=5000)
+    language: str = "中文"
+    paper_ids: list[str] | None = None
+    """限定可引用文献；留空则用项目内全部可用文献。"""
+    apply: bool = False
+    """True 时直接把结果写入该节正文（draft 动作常用）。"""
+
+
+class WriteActionResponse(BaseModel):
+    content: str
+    action: str
+    paper_ids: list[str] = Field(default_factory=list)
+    invalid_citations: list[int] = Field(default_factory=list)
+    applied: bool = False
+
+
+# ---------- Export / quality ----------
+class CitationIssueOut(BaseModel):
+    section: str
+    kind: str
+    detail: str
+
+
+class QualityReportOut(BaseModel):
+    issues: list[CitationIssueOut] = Field(default_factory=list)
+    word_count: int = 0
+    section_count: int = 0
+    reference_count: int = 0
+    ai_generated_sections: int = 0

@@ -1,6 +1,16 @@
 from fastapi import APIRouter
 
-from app.api import directions, graph, jobs, papers, projects, reviews, search
+from app.api import (
+    directions,
+    graph,
+    jobs,
+    manuscript,
+    outline,
+    papers,
+    projects,
+    reviews,
+    search,
+)
 
 router = APIRouter()
 router.include_router(projects.router, prefix="/projects", tags=["projects"])
@@ -15,6 +25,12 @@ router.include_router(
 )
 router.include_router(
     reviews.router, prefix="/projects/{project_id}/review", tags=["review"]
+)
+router.include_router(
+    outline.router, prefix="/projects/{project_id}/outline", tags=["outline"]
+)
+router.include_router(
+    manuscript.router, prefix="/projects/{project_id}/manuscript", tags=["manuscript"]
 )
 router.include_router(
     graph.router, prefix="/projects/{project_id}/graph", tags=["graph"]

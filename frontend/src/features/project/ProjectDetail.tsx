@@ -4,16 +4,20 @@ import { api, ApiError, type Paper, type Project } from '../../api/client'
 import { ErrorBanner } from '../../components/ui'
 import Directions from '../direction/Directions'
 import Library from '../library/Library'
+import Manuscript from '../manuscript/Manuscript'
+import Outline from '../outline/Outline'
 import Review from '../review/Review'
 import Search from '../search/Search'
 
-type Tab = 'search' | 'library' | 'direction' | 'review'
+type Tab = 'search' | 'library' | 'direction' | 'review' | 'outline' | 'manuscript'
 
 const TABS: [Tab, string][] = [
   ['search', '检索文献'],
   ['library', '文献库'],
   ['direction', '研究方向'],
   ['review', '文献综述'],
+  ['outline', '论文大纲'],
+  ['manuscript', '正文撰写'],
 ]
 
 export default function ProjectDetail() {
@@ -88,6 +92,8 @@ export default function ProjectDetail() {
           <Directions projectId={projectId} readyPapers={readyPapers} />
         )}
         {tab === 'review' && <Review projectId={projectId} papers={papers.length} />}
+        {tab === 'outline' && <Outline projectId={projectId} />}
+        {tab === 'manuscript' && <Manuscript projectId={projectId} />}
       </div>
     </div>
   )
