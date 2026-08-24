@@ -1,12 +1,17 @@
 # 部署指南
 
 本项目是 FastAPI + React + 多个数据存储的架构，无法 100% 部署到单一平台。
-推荐采用混合部署：**前端上 Cloudflare Pages，后端上 Fly.io，各数据服务用托管免费层**。
+推荐采用混合部署：**前端上静态托管平台（Cloudflare Pages 或 Vercel），后端上 Fly.io，各数据服务用托管免费层**。
+
+- 方案一（[Cloudflare Pages](#第三步部署前端到-cloudflare-pages)）：前端托管在 Cloudflare
+- 方案二（[Vercel](#前端托管改用-vercel)）：前端托管在 Vercel，其余与方案一完全一致
+
+两种方案的后端、数据库、向量库、引用图谱配置相同，可互换。
 
 ## 架构
 
 ```
-                    Cloudflare Pages (前端 SPA)
+                    前端 SPA（Cloudflare Pages 或 Vercel）
                            │
                            │ HTTPS
                            ▼
@@ -20,7 +25,7 @@
 
 | 组件 | 托管 | 免费层 | 用途 |
 |---|---|---|---|
-| 前端 | Cloudflare Pages | 无限请求 | 静态托管 + 自动构建 |
+| 前端 | Cloudflare Pages **或** Vercel | 无限请求 | 静态托管 + 自动构建 |
 | 后端 | Fly.io | 3 个 shared-cpu-1x 机器 | Docker 运行 FastAPI |
 | Postgres | Neon | 0.5 GB | 项目、文献、大纲数据 |
 | Neo4j | Neo4j Aura Free | 200K 节点 | 引用图谱（综述分簇） |
@@ -33,10 +38,11 @@
 ## 前置准备
 
 - 账号：[GitHub](https://github.com)（代码已在此）、[Fly.io](https://fly.io)、
-  [Cloudflare](https://cloudflare.com)、[Neon](https://neon.tech)、
+  [Cloudflare](https://cloudflare.com) **或** [Vercel](https://vercel.com)、[Neon](https://neon.tech)、
   [Neo4j Aura](https://neo4j.com/product/auradb/)、[Qdrant Cloud](https://cloud.qdrant.io)
-- 命令行：`fly` CLI（[安装](https://fly.io/docs/hands-on/install-flyctl/)）、`git`
-- 把项目 fork 到你自己的 GitHub，因为 Cloudflare Pages 要从你的仓库连
+- 命令行：`fly` CLI（[安装](https://fly.io/docs/hands-on/install-flyctl/)）、`git`、
+  Vercel CLI（可选，`npm i -g vercel`）
+- 把项目 fork 到你自己的 GitHub，因为 Cloudflare Pages / Vercel 要从你的仓库连
 
 ---
 
@@ -157,6 +163,9 @@ curl https://<你的名字>.fly.dev/health
 
 首次部署后，前端会得到一个 `https://<项目名>.pages.dev` 域名。
 
+> 前端用了 `BrowserRouter`，深链接（如 `/projects/:id`）已通过 `frontend/public/_redirects`
+> 在构建时自动带进 `dist/`（`/* /index.html 200`），Cloudflare Pages 会据此做 SPA 回退，无需额外配置。
+
 ### 3.2 回填 CORS
 
 回到第二步，把后端的 `CORS_ORIGINS` 更新为你的 Pages 域名：
@@ -172,6 +181,68 @@ fly secrets set CORS_ORIGINS="https://<项目名>.pages.dev"
 
 打开 `https://<项目名>.pages.dev`，创建项目、上传 PDF 应能正常工作。
 如果创建项目报 CORS 错误，检查 `CORS_ORIGINS` 是否与浏览器地址栏完全一致（含 https、不含末尾斜杠）。
+
+---
+
+## 前端托管改用 Vercel
+
+后端、数据库、向量库、引用图谱的配置与方案一完全相同（见第一、二步）。
+仅把静态前端从 Cloudflare Pages 换成 Vercel，构建配置与 `VITE_API_BASE` 一致。
+
+> Vercel 不能托管 FastAPI 后端：它的函数运行环境是 Node.js，Python 函数虽有，但本项目
+> 依赖 pymupdf（C 扩展）、asyncpg、neo4j、qdrant-client 等原生/重型包，体积与运行限制都
+> 不适合上 Vercel。所以后端仍然走 Fly.io（方案一第二步），Vercel 只放前端。
+
+### V.1 通过 Dashboard 连接 GitHub
+
+1. 进入 [Vercel Dashboard](https://vercel.com/dashboard) → Add New → Project → 导入你的 GitHub 仓库 `paper`
+2. 框架预设选 `Vite`（Vercel 会自动识别，但确认一下）
+3. 构建配置：
+   - **Build Command**: `cd frontend && npm install && npm run build`
+   - **Output Directory**: `frontend/dist`
+   - **Root Directory**: 留空（项目根），不要设成 `frontend`
+4. **Environment Variables**（关键）：
+   - `VITE_API_BASE` = `https://<你的后端名>.fly.dev/api/v1`
+5. Deploy
+
+部署后会得到 `https://<项目名>.vercel.app`，每次向仓库 push 还会生成预览环境。
+
+### V.2 通过 Vercel CLI（可选）
+
+```bash
+npm i -g vercel
+cd 项目根
+vercel login
+vercel                     # 首次：按提示连仓库、设框架为 Vite
+# 设环境变量后重新部署：
+vercel env add VITE_API_BASE
+vercel --prod
+```
+
+`vercel env add` 会交互式让你填值，等价于 Dashboard 里的 Environment Variables。
+
+### V.3 回填 CORS 并验证
+
+与 Cloudflare 方案一样，把后端 `CORS_ORIGINS` 更新为 Vercel 域名：
+
+```bash
+fly secrets set CORS_ORIGINS="https://<项目名>.vercel.app"
+```
+
+打开 `https://<项目名>.vercel.app`，创建项目、上传 PDF 应正常工作；
+CORS 报错时检查 `CORS_ORIGINS` 与浏览器地址栏是否完全一致。
+
+### V.4（实验性）整站上 Vercel
+
+不推荐，仅作可行性说明：理论上可把 FastAPI 用 [Mangum](https://github.com/jordaneremieff/mangum)
+包成 ASGI handler，作为 Vercel Python 函数暴露 `/api/*`，从而省掉 Fly.io。但本项目会撞到：
+
+- Vercel Python 函数源码 + 依赖上限约 250 MB，pymupdf + fastapi + sqlalchemy + 各种客户端极易超限
+- 部分原生包（asyncpg 等）需预编译 wheel，冷启动慢且不一定能装上
+- Neo4j / Qdrant / Postgres 仍需外部托管（Neon / Aura / Qdrant Cloud），省掉的只是 Fly.io 这一层
+- 本地卷不可用在 Vercel，上传的 PDF 必须改存到 Vercel Blob / R2 / S3，需改后端存储代码
+
+综上，整站上 Vercel 收益有限而改动很大，建议仍用 Fly.io 跑后端、Vercel 只放前端。
 
 ---
 

@@ -10,7 +10,7 @@
 
 本机开发用 `docker compose up` 即可（见下文「快速开始」）。
 
-生产部署采用混合架构：前端上 **Cloudflare Pages**，后端上 **Fly.io**，
+生产部署采用混合架构：前端上 **Cloudflare Pages 或 Vercel**，后端上 **Fly.io**，
 数据服务用 Neon Postgres / Neo4j Aura / Qdrant Cloud 的免费层。
 完整步骤见 [DEPLOY.md](./DEPLOY.md)。
 
