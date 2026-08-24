@@ -26,7 +26,7 @@
 
 ### 前置
 
-- Docker & Docker Compose
+- Docker & Docker Compose（Windows 用户见下方「Windows 用户注意事项」）
 
 ### 启动全部服务
 
@@ -34,6 +34,8 @@
 cp .env.example .env   # 按需填入 LLM API key
 docker compose up --build
 ```
+
+> Windows 上 `cp` 不可用，用 `Copy-Item .env.example .env`（PowerShell）。详见「Windows 用户注意事项」。
 
 ### 服务地址
 
@@ -128,6 +130,52 @@ LLM_DIRECTION=gpt-4o
 
 不配置也能用，只是并发受限。
 
+## Windows 用户注意事项
+
+本项目在 Windows 上**推荐直接用 Docker Desktop 一键起全套**。后端依赖 Neo4j / Qdrant / Redis，
+在本机原生安装很麻烦（Neo4j 需要 Java、Redis 官方不支持 Windows、Qdrant 是 Linux 二进制），
+Docker 把这些都打包好了，无需逐个安装。
+
+### 准备
+
+1. 安装 [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/)，安装时选 **WSL2 后端**
+   （Windows 10/11 家庭版默认带 WSL2；若没有，管理员 PowerShell 执行 `wsl --install`）
+2. 启动 Docker Desktop，确认任务栏图标变绿，执行 `docker compose version` 能出结果
+3. Docker Desktop → Settings → Resources，**内存调到 ≥ 4 GB**（Neo4j + Qdrant 一起吃内存，默认 2 GB 可能不够）
+
+### 启动
+
+在仓库根目录的 PowerShell 中：
+
+```powershell
+Copy-Item .env.example .env      # 复制环境变量（PowerShell 没有 cp）
+# 编辑 .env，至少填一个 LLM key
+docker compose up --build        # 首次拉镜像 + pip/npm 安装，约几分钟
+```
+
+启动后访问 http://localhost:5173 。常用命令：
+
+```powershell
+docker compose logs -f backend   # 看后端日志（排错）
+docker compose restart backend   # 改了 .env 后重启单服务
+docker compose down              # 停止（数据保留在卷中）
+docker compose down -v           # 停止并清空所有数据（重置）
+```
+
+### Windows 特有坑
+
+- **本地 Ollama 连不上**：Ollama 装在 Windows 本机，但后端跑在容器里，容器内 `localhost` 是容器自己。
+  必须在 `.env` 写 `OLLAMA_BASE_URL=http://host.docker.internal:11434` 才能从容器访问宿主机上的 Ollama。
+  DeepSeek / OpenAI 是云端地址，不受影响。
+- **Neo4j / Qdrant 偶尔抢跑报错**：`docker-compose.yml` 里后端只等 Postgres 健康，不等这两个，冷启动偶尔会连不上。
+  等十几秒后 `docker compose restart backend` 即可。
+- **端口被占用**：5173 / 8000 / 7474 / 6333 / 6379 任一被占，改 `docker-compose.yml` 左侧映射端口即可。
+
+### 不用 Docker 的代价
+
+不装 Docker 的话，需要本机装 Python 3.11 + Node 20，**外加** Postgres、Neo4j、Redis、Qdrant 四个服务，
+其中三个在 Windows 原生安装都很折腾。所以 Windows 上直接用 Docker 是最优解。
+
 ## 本地开发（非 Docker）
 
 后端：
@@ -143,6 +191,14 @@ uvicorn app.main:app --reload
 ```bash
 cd backend
 DATABASE_URL=sqlite+aiosqlite:///./test.db pytest -q
+```
+
+Windows（PowerShell）等价写法：
+
+```powershell
+cd backend
+$env:DATABASE_URL="sqlite+aiosqlite:///./test.db"
+pytest -q
 ```
 
 前端：
