@@ -13,10 +13,10 @@ from app.db import get_session
 from app.models import ManuscriptSection, OutlineSection, Paper, Project
 from app.rag import get_embedder, get_vector_store
 from app.schemas import (
-    CitationIssueOut,
+    FullQualityReportOut,
     ManuscriptSectionOut,
     ManuscriptSectionSave,
-    QualityReportOut,
+    QualityIssueOut,
     WriteActionRequest,
     WriteActionResponse,
 )
@@ -25,7 +25,6 @@ from app.services.export import (
     Manuscript,
     ManuscriptPart,
     Reference,
-    check_citations,
     to_bibtex,
     to_docx_bytes,
     to_latex,
@@ -350,23 +349,36 @@ async def _assemble(session: AsyncSession, project: Project) -> Manuscript:
     return Manuscript(title=project.title, parts=parts, references=references)
 
 
-@router.get("/quality", response_model=QualityReportOut)
+@router.get("/quality", response_model=FullQualityReportOut)
 async def quality_check(
     project: Project = Depends(get_project),
     session: AsyncSession = Depends(get_session),
 ):
-    """引用一致性与完整性检查。"""
+    """完整质量检查：引用一致性、术语统一、重复句、语言、格式。"""
+    from app.services.quality import check_manuscript, summarize_kinds
+
     manuscript = await _assemble(session, project)
-    issues = check_citations(manuscript)
-    return QualityReportOut(
+    report = check_manuscript(manuscript)
+
+    return FullQualityReportOut(
         issues=[
-            CitationIssueOut(section=i.section, kind=i.kind, detail=i.detail)
-            for i in issues
+            QualityIssueOut(
+                section=i.section,
+                kind=i.kind,
+                detail=i.detail,
+                severity=i.severity,
+                suggestion=i.suggestion,
+            )
+            for i in report.sorted_issues()
         ],
-        word_count=manuscript.word_count,
-        section_count=len(manuscript.parts),
-        reference_count=len(manuscript.references),
-        ai_generated_sections=sum(1 for p in manuscript.parts if p.ai_generated),
+        kind_counts=summarize_kinds(report),
+        word_count=report.word_count,
+        section_count=report.section_count,
+        empty_sections=report.empty_sections,
+        reference_count=report.reference_count,
+        ai_generated_sections=report.ai_generated_sections,
+        error_count=report.error_count,
+        warning_count=report.warning_count,
     )
 
 

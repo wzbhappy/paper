@@ -3,10 +3,12 @@ from fastapi import APIRouter
 from app.api import (
     directions,
     graph,
+    hotspot,
     jobs,
     manuscript,
     outline,
     papers,
+    progress,
     projects,
     reviews,
     search,
@@ -15,10 +17,16 @@ from app.api import (
 router = APIRouter()
 router.include_router(projects.router, prefix="/projects", tags=["projects"])
 router.include_router(
+    progress.router, prefix="/projects/{project_id}/progress", tags=["progress"]
+)
+router.include_router(
     papers.router, prefix="/projects/{project_id}/papers", tags=["papers"]
 )
 router.include_router(
     search.router, prefix="/projects/{project_id}/search", tags=["search"]
+)
+router.include_router(
+    hotspot.router, prefix="/projects/{project_id}/hotspot", tags=["hotspot"]
 )
 router.include_router(
     directions.router, prefix="/projects/{project_id}/directions", tags=["directions"]

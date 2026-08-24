@@ -21,6 +21,20 @@ const ISSUE_LABEL: Record<string, string> = {
   out_of_range: '引用越界',
   unused_reference: '未被引用',
   empty_section: '章节为空',
+  missing_citation: '缺少引用',
+  term_inconsistency: '术语不统一',
+  duplicate_sentence: '重复句',
+  informal_language: '口语化',
+  long_sentence: '长句',
+  heading_jump: '层级跳跃',
+  numbering_gap: '编号不连续',
+  numbering_start: '编号起始',
+}
+
+const SEVERITY_STYLE: Record<string, string> = {
+  error: 'text-red-700',
+  warning: 'text-amber-800',
+  info: 'text-gray-600',
 }
 
 export default function Manuscript({ projectId }: { projectId: string }) {
@@ -199,16 +213,31 @@ export default function Manuscript({ projectId }: { projectId: string }) {
         <Card className="mb-4">
           <h3 className="mb-2 font-semibold text-gray-900">质量检查</h3>
           <p className="text-sm text-gray-600">
-            {quality.section_count} 个章节 · {quality.word_count} 字 ·{' '}
-            {quality.reference_count} 条参考文献 · {quality.ai_generated_sections} 节含 AI 生成内容
+            {quality.section_count} 个章节（{quality.empty_sections} 个为空） ·{' '}
+            {quality.word_count} 字 · {quality.reference_count} 条参考文献 ·{' '}
+            {quality.ai_generated_sections} 节含 AI 生成内容
           </p>
+          <p className="mt-1 text-sm">
+            <span className={quality.error_count ? 'text-red-700' : 'text-green-700'}>
+              {quality.error_count} 个严重问题
+            </span>
+            <span className="mx-2 text-gray-300">|</span>
+            <span className="text-amber-800">{quality.warning_count} 个警告</span>
+          </p>
+
           {quality.issues.length === 0 ? (
-            <p className="mt-2 text-sm text-green-700">未发现引用一致性问题。</p>
+            <p className="mt-2 text-sm text-green-700">未发现问题。</p>
           ) : (
-            <ul className="mt-2 grid gap-1 text-sm">
+            <ul className="mt-3 grid gap-1.5 text-sm">
               {quality.issues.map((issue, i) => (
-                <li key={i} className="text-amber-800">
-                  [{ISSUE_LABEL[issue.kind] ?? issue.kind}] {issue.section}：{issue.detail}
+                <li key={i} className={SEVERITY_STYLE[issue.severity] ?? 'text-gray-700'}>
+                  <span className="font-medium">
+                    [{ISSUE_LABEL[issue.kind] ?? issue.kind}]
+                  </span>{' '}
+                  {issue.section}：{issue.detail}
+                  {issue.suggestion && (
+                    <span className="text-gray-500"> — {issue.suggestion}</span>
+                  )}
                 </li>
               ))}
             </ul>

@@ -175,12 +175,79 @@ export interface WriteActionResult {
   applied: boolean
 }
 
+export interface QualityIssue {
+  section: string
+  kind: string
+  detail: string
+  severity: 'error' | 'warning' | 'info'
+  suggestion: string | null
+}
+
 export interface QualityReport {
-  issues: { section: string; kind: string; detail: string }[]
+  issues: QualityIssue[]
+  kind_counts: Record<string, number>
   word_count: number
   section_count: number
+  empty_sections: number
   reference_count: number
   ai_generated_sections: number
+  error_count: number
+  warning_count: number
+}
+
+export interface TermTrend {
+  term: string
+  count: number
+  recent_count: number
+  trend: 'rising' | 'stable' | 'declining' | 'unknown'
+  recent_share: number | null
+}
+
+export interface ResearchGap {
+  statement: string
+  reason: string | null
+  signal: string
+  difficulty: number
+  evidence_paper_ids: string[]
+  evidence_titles: string[]
+}
+
+export interface HotspotReport {
+  total_papers: number
+  papers_with_terms: number
+  year_from: number | null
+  year_to: number | null
+  trends: TermTrend[]
+  cooccurrence: { a: string; b: string; count: number }[]
+  isolated_terms: string[]
+  limitations: string[]
+  gaps: ResearchGap[]
+  seed_keywords: string[]
+}
+
+export interface StageStatus {
+  key: string
+  label: string
+  done: boolean
+  detail: string
+}
+
+export interface Progress {
+  current_stage: string
+  suggested_stage: string
+  next_action: string
+  completion: number
+  stages: StageStatus[]
+  paper_count: number
+  parsed_paper_count: number
+  summarized_count: number
+  direction_count: number
+  has_selected_direction: boolean
+  review_count: number
+  outline_section_count: number
+  written_section_count: number
+  total_word_count: number
+  quality_error_count: number
 }
 
 export class ApiError extends Error {
@@ -349,6 +416,11 @@ export const api = {
 
   exportUrl: (projectId: string, format: string, disclosure = true) =>
     `${BASE}/projects/${projectId}/manuscript/export?format=${format}&disclosure=${disclosure}`,
+
+  analyzeHotspot: (projectId: string, body: { seed_keywords?: string[]; n?: number }) =>
+    request<HotspotReport>(`/projects/${projectId}/hotspot`, json('POST', body)),
+
+  getProgress: (projectId: string) => request<Progress>(`/projects/${projectId}/progress`),
 }
 
 /** 轮询任务直到完成或失败。 */

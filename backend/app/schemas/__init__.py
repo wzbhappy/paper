@@ -309,3 +309,91 @@ class QualityReportOut(BaseModel):
     section_count: int = 0
     reference_count: int = 0
     ai_generated_sections: int = 0
+
+
+class QualityIssueOut(BaseModel):
+    section: str
+    kind: str
+    detail: str
+    severity: str = "warning"
+    suggestion: str | None = None
+
+
+class FullQualityReportOut(BaseModel):
+    issues: list[QualityIssueOut] = Field(default_factory=list)
+    kind_counts: dict[str, int] = Field(default_factory=dict)
+    word_count: int = 0
+    section_count: int = 0
+    empty_sections: int = 0
+    reference_count: int = 0
+    ai_generated_sections: int = 0
+    error_count: int = 0
+    warning_count: int = 0
+
+
+# ---------- Hotspot ----------
+class HotspotRequest(BaseModel):
+    seed_keywords: list[str] = Field(default_factory=list)
+    n: int = Field(default=3, ge=1, le=10)
+
+
+class TermTrendOut(BaseModel):
+    term: str
+    count: int
+    recent_count: int
+    trend: str
+    recent_share: float | None = None
+
+
+class TermPairOut(BaseModel):
+    a: str
+    b: str
+    count: int
+
+
+class ResearchGapOut(BaseModel):
+    statement: str
+    reason: str | None = None
+    signal: str
+    difficulty: float
+    evidence_paper_ids: list[str] = Field(default_factory=list)
+    evidence_titles: list[str] = Field(default_factory=list)
+
+
+class HotspotReportOut(BaseModel):
+    total_papers: int = 0
+    papers_with_terms: int = 0
+    year_from: int | None = None
+    year_to: int | None = None
+    trends: list[TermTrendOut] = Field(default_factory=list)
+    cooccurrence: list[TermPairOut] = Field(default_factory=list)
+    isolated_terms: list[str] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+    gaps: list[ResearchGapOut] = Field(default_factory=list)
+    seed_keywords: list[str] = Field(default_factory=list)
+
+
+# ---------- Progress ----------
+class StageStatusOut(BaseModel):
+    key: str
+    label: str
+    done: bool
+    detail: str
+
+
+class ProgressOut(BaseModel):
+    current_stage: str
+    suggested_stage: str
+    next_action: str
+    completion: float
+    stages: list[StageStatusOut] = Field(default_factory=list)
+    paper_count: int = 0
+    parsed_paper_count: int = 0
+    summarized_count: int = 0
+    direction_count: int = 0
+    has_selected_direction: bool = False
+    review_count: int = 0
+    outline_section_count: int = 0
+    written_section_count: int = 0
+    total_word_count: int = 0
+    quality_error_count: int = 0
